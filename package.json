@@ -2,11 +2,11 @@
   "name": "employee-management",
   "version": "0.1.0",
   "private": true,
+  "homepage": "https://sreenivas1305.github.io/employee_management_dashboard",
   "scripts": {
     "dev": "next dev",
     "build": "next build",
-    "start": "next start",
-    "lint": "eslint"
+    "deploy": "gh-pages -d out"
   },
   "dependencies": {
     "next": "16.1.1",
@@ -20,6 +20,7 @@
     "@types/react-dom": "^19",
     "eslint": "^9",
     "eslint-config-next": "16.1.1",
+    "gh-pages": "^6.3.0",
     "tailwindcss": "^4",
     "typescript": "^5"
   }
