@@ -1,7 +1,15 @@
 /** @type {import('next').NextConfig} */
+
+const isProd = process.env.NODE_ENV === 'production';
+
 const nextConfig = {
   output: 'export',
-  basePath: '/employee_management_dashboard',
+
+  basePath: isProd ? '/employee_management_dashboard' : '',
+  assetPrefix: isProd ? '/employee_management_dashboard/' : '',
+
+  trailingSlash: true,
+
   images: {
     unoptimized: true,
   },
