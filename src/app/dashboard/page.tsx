@@ -8,13 +8,20 @@ import { SearchAndFilter } from '@/components/SearchAndFilter';
 import { EmployeeTable } from '@/components/EmployeeTable';
 import { EmployeeForm } from '@/components/EmployeeForm';
 import { Employee } from '@/types';
-import { getEmployees, addEmployee, updateEmployee, deleteEmployee, searchAndFilterEmployees } from '@/utils/storage';
+import {
+  getEmployees,
+  addEmployee,
+  updateEmployee,
+  deleteEmployee,
+  searchAndFilterEmployees
+} from '@/utils/storage';  // ← changed from @/utils/storage
 
 export default function DashboardPage() {
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [filteredEmployees, setFilteredEmployees] = useState<Employee[]>([]);
   const [selectedEmployee, setSelectedEmployee] = useState<Employee | null>(null);
   const [showForm, setShowForm] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [filters, setFilters] = useState({
     search: '',
     gender: '',
@@ -29,39 +36,68 @@ export default function DashboardPage() {
     applyFilters();
   }, [employees, filters]);
 
-  const loadEmployees = () => {
-    const data = getEmployees();
-    setEmployees(data);
-    setFilteredEmployees(data);
-  };
-
-  const applyFilters = () => {
-    const filtered = searchAndFilterEmployees(
-      filters.search,
-      filters.gender,
-      filters.status
-    );
-    setFilteredEmployees(filtered);
-  };
-
-  const handleAddEmployee = (formData: Omit<Employee, 'id'>) => {
-    const newEmployee = addEmployee(formData);
-    setEmployees([...employees, newEmployee]);
-    setShowForm(false);
-  };
-
-  const handleUpdateEmployee = (formData: Employee) => {
-    const updated = updateEmployee(formData.id, formData);
-    if (updated) {
-      setEmployees(employees.map(e => (e.id === formData.id ? updated : e)));
-      setSelectedEmployee(null);
-      setShowForm(false);
+  // ── async: fetch all employees from Supabase via API ──
+  const loadEmployees = async () => {
+    try {
+      setLoading(true);
+      const data = await getEmployees();
+      setEmployees(data);
+      setFilteredEmployees(data);
+    } catch (err) {
+      console.error('Failed to load employees:', err);
+    } finally {
+      setLoading(false);
     }
   };
 
-  const handleDeleteEmployee = (id: string) => {
-    if (deleteEmployee(id)) {
-      setEmployees(employees.filter(e => e.id !== id));
+  // ── async: search + filter via API ──
+  const applyFilters = async () => {
+    try {
+      const filtered = await searchAndFilterEmployees(
+        filters.search,
+        filters.gender,
+        filters.status
+      );
+      setFilteredEmployees(filtered);
+    } catch (err) {
+      console.error('Failed to filter employees:', err);
+    }
+  };
+
+  // ── async: add ──
+  const handleAddEmployee = async (formData: Omit<Employee, 'id'>) => {
+    try {
+      const newEmployee = await addEmployee(formData);
+      setEmployees(prev => [...prev, newEmployee]);
+      setShowForm(false);
+    } catch (err) {
+      console.error('Failed to add employee:', err);
+    }
+  };
+
+  // ── async: update ──
+  const handleUpdateEmployee = async (formData: Employee) => {
+    try {
+      const updated = await updateEmployee(formData.id, formData);
+      if (updated) {
+        setEmployees(prev => prev.map(e => (e.id === formData.id ? updated : e)));
+        setSelectedEmployee(null);
+        setShowForm(false);
+      }
+    } catch (err) {
+      console.error('Failed to update employee:', err);
+    }
+  };
+
+  // ── async: delete ──
+  const handleDeleteEmployee = async (id: string) => {
+    try {
+      const success = await deleteEmployee(id);
+      if (success) {
+        setEmployees(prev => prev.filter(e => e.id !== id));
+      }
+    } catch (err) {
+      console.error('Failed to delete employee:', err);
     }
   };
 
@@ -78,11 +114,9 @@ export default function DashboardPage() {
     }
   };
 
-  const handlePrint = () => {
-    window.print();
-  };
+  const handlePrint = () => window.print();
 
-  const activeCount = employees.filter(e => e.isActive).length;
+  const activeCount   = employees.filter(e => e.isActive).length;
   const inactiveCount = employees.filter(e => !e.isActive).length;
 
   return (
@@ -129,7 +163,9 @@ export default function DashboardPage() {
 
               <div className="mb-6 flex justify-between items-center">
                 <h3 className="text-xl font-bold text-gray-800">
-                  Employees ({filteredEmployees.length})
+                  {loading
+                    ? 'Loading employees...'
+                    : `Employees (${filteredEmployees.length})`}
                 </h3>
                 <button
                   onClick={handlePrint}
@@ -139,12 +175,18 @@ export default function DashboardPage() {
                 </button>
               </div>
 
-              <EmployeeTable
-                employees={filteredEmployees}
-                onEdit={handleEditClick}
-                onDelete={handleDeleteEmployee}
-                onPrint={handlePrint}
-              />
+              {loading ? (
+                <div className="flex justify-center items-center py-20">
+                  <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-green-600" />
+                </div>
+              ) : (
+                <EmployeeTable
+                  employees={filteredEmployees}
+                  onEdit={handleEditClick}
+                  onDelete={handleDeleteEmployee}
+                  onPrint={handlePrint}
+                />
+              )}
             </>
           )}
         </main>
@@ -152,18 +194,10 @@ export default function DashboardPage() {
 
       <style>{`
         @media print {
-          body * {
-            visibility: hidden;
-          }
-          main, main * {
-            visibility: visible;
-          }
-          button {
-            display: none !important;
-          }
-          table {
-            width: 100%;
-          }
+          body * { visibility: hidden; }
+          main, main * { visibility: visible; }
+          button { display: none !important; }
+          table { width: 100%; }
         }
       `}</style>
     </ProtectedRoute>
