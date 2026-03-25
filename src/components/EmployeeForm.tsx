@@ -14,6 +14,7 @@ export const EmployeeForm = ({ employee, onSubmit, onCancel }: EmployeeFormProps
   const [formData, setFormData] = useState<Omit<Employee, 'id'> | Employee>(
     employee || {
       fullName: '',
+      emp_no: 0,
       gender: 'Male',
       dateOfBirth: '',
       state: 'California',

@@ -13,62 +13,7 @@ export const MOCK_USERS = [
   }
 ];
 
-export const MOCK_EMPLOYEES: Employee[] = [
-  {
-    id: '1',
-    fullName: 'John Smith',
-    gender: 'Male',
-    dateOfBirth: '1990-05-15',
-    state: 'California',
-    profileImage: 'https://api.dicebear.com/7.x/avataaars/svg?seed=John',
-    isActive: true
-  },
-  {
-    id: '2',
-    fullName: 'Sarah Johnson',
-    gender: 'Female',
-    dateOfBirth: '1992-08-22',
-    state: 'Texas',
-    profileImage: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Sarah',
-    isActive: true
-  },
-  {
-    id: '3',
-    fullName: 'Mike Davis',
-    gender: 'Male',
-    dateOfBirth: '1988-12-10',
-    state: 'New York',
-    profileImage: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Mike',
-    isActive: true
-  },
-  {
-    id: '4',
-    fullName: 'Emma Wilson',
-    gender: 'Female',
-    dateOfBirth: '1995-03-18',
-    state: 'Florida',
-    profileImage: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Emma',
-    isActive: false
-  },
-  {
-    id: '5',
-    fullName: 'Robert Brown',
-    gender: 'Male',
-    dateOfBirth: '1991-07-25',
-    state: 'Illinois',
-    profileImage: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Robert',
-    isActive: true
-  },
-  {
-    id: '6',
-    fullName: 'Lisa Anderson',
-    gender: 'Female',
-    dateOfBirth: '1993-11-30',
-    state: 'Pennsylvania',
-    profileImage: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Lisa',
-    isActive: true
-  }
-];
+
 
 export const STATES = [
   'Alabama', 'Alaska', 'Arizona', 'Arkansas', 'California',
