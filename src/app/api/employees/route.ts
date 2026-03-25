@@ -3,6 +3,7 @@ import { supabase } from '@/lib/supabase';
 
 export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url);
+
   const search   = searchParams.get('search')   || '';
   const state    = searchParams.get('state')    || '';
   const gender   = searchParams.get('gender')   || '';
@@ -13,15 +14,14 @@ export async function GET(req: NextRequest) {
 
   let query = supabase.from('employees').select('*', { count: 'exact' });
 
-  // ✅ camelCase — matches your Supabase table columns
-  if (search)            query = query.ilike('fullName', `%${search}%`);
+  if (search)            query = query.ilike('"fullName"', `%${search}%`);
   if (state)             query = query.eq('state', state);
   if (gender)            query = query.eq('gender', gender);
-  if (isActive !== null) query = query.eq('isActive', isActive === 'true');
+  if (isActive !== null) query = query.eq('"isActive"', isActive === 'true');
 
   const { data, error, count } = await query
     .range(offset, offset + limit - 1)
-    .order('fullName');   // ✅ camelCase
+    .order('"fullName"');
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 
