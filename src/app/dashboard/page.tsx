@@ -14,7 +14,7 @@ import {
   updateEmployee,
   deleteEmployee,
   searchAndFilterEmployees
-} from '@/utils/storage';  // ← changed from @/utils/storage
+} from '@/utils/storage';  // ← fix import
 
 export default function DashboardPage() {
   const [employees, setEmployees] = useState<Employee[]>([]);
@@ -22,6 +22,9 @@ export default function DashboardPage() {
   const [selectedEmployee, setSelectedEmployee] = useState<Employee | null>(null);
   const [showForm, setShowForm] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [total, setTotal] = useState(0);
   const [filters, setFilters] = useState({
     search: '',
     gender: '',
@@ -29,20 +32,23 @@ export default function DashboardPage() {
   });
 
   useEffect(() => {
-    loadEmployees();
-  }, []);
+    loadEmployees(currentPage);
+  }, [currentPage]);
 
   useEffect(() => {
-    applyFilters();
-  }, [employees, filters]);
+    setCurrentPage(1);
+    loadWithFilters(1);
+  }, [filters]);
 
-  // ── async: fetch all employees from Supabase via API ──
-  const loadEmployees = async () => {
+  const loadEmployees = async (page: number) => {
     try {
       setLoading(true);
-      const data = await getEmployees();
-      setEmployees(data);
-      setFilteredEmployees(data);
+      const res = await fetch(`/api/employees?page=${page}&limit=20`);
+      const data = await res.json();
+      setEmployees(data.employees);
+      setFilteredEmployees(data.employees);
+      setTotal(data.total);
+      setTotalPages(data.totalPages);
     } catch (err) {
       console.error('Failed to load employees:', err);
     } finally {
@@ -50,37 +56,44 @@ export default function DashboardPage() {
     }
   };
 
-  // ── async: search + filter via API ──
-  const applyFilters = async () => {
+  const loadWithFilters = async (page: number) => {
     try {
-      const filtered = await searchAndFilterEmployees(
-        filters.search,
-        filters.gender,
-        filters.status
-      );
-      setFilteredEmployees(filtered);
+      setLoading(true);
+      const params = new URLSearchParams();
+      if (filters.search) params.set('search', filters.search);
+      if (filters.gender) params.set('gender', filters.gender);
+      if (filters.status === 'active') params.set('isActive', 'true');
+      if (filters.status === 'inactive') params.set('isActive', 'false');
+      params.set('page', String(page));
+      params.set('limit', '20');
+
+      const res = await fetch(`/api/employees?${params}`);
+      const data = await res.json();
+      setFilteredEmployees(data.employees);
+      setTotal(data.total);
+      setTotalPages(data.totalPages);
     } catch (err) {
-      console.error('Failed to filter employees:', err);
+      console.error('Failed to filter:', err);
+    } finally {
+      setLoading(false);
     }
   };
 
-  // ── async: add ──
   const handleAddEmployee = async (formData: Omit<Employee, 'id'>) => {
     try {
-      const newEmployee = await addEmployee(formData);
-      setEmployees(prev => [...prev, newEmployee]);
+      await addEmployee(formData);
+      loadEmployees(currentPage);
       setShowForm(false);
     } catch (err) {
       console.error('Failed to add employee:', err);
     }
   };
 
-  // ── async: update ──
   const handleUpdateEmployee = async (formData: Employee) => {
     try {
       const updated = await updateEmployee(formData.id, formData);
       if (updated) {
-        setEmployees(prev => prev.map(e => (e.id === formData.id ? updated : e)));
+        setFilteredEmployees(prev => prev.map(e => e.id === formData.id ? updated : e));
         setSelectedEmployee(null);
         setShowForm(false);
       }
@@ -89,12 +102,11 @@ export default function DashboardPage() {
     }
   };
 
-  // ── async: delete ──
   const handleDeleteEmployee = async (id: string) => {
     try {
       const success = await deleteEmployee(id);
       if (success) {
-        setEmployees(prev => prev.filter(e => e.id !== id));
+        loadEmployees(currentPage);
       }
     } catch (err) {
       console.error('Failed to delete employee:', err);
@@ -116,33 +128,27 @@ export default function DashboardPage() {
 
   const handlePrint = () => window.print();
 
-  const activeCount   = employees.filter(e => e.isActive).length;
+  // These counts are from ALL employees, so fetch separately
+  const activeCount = employees.filter(e => e.isActive).length;
   const inactiveCount = employees.filter(e => !e.isActive).length;
 
   return (
     <ProtectedRoute>
       <div className="min-h-screen bg-gray-100">
         <Header />
-
         <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
           {showForm ? (
             <EmployeeForm
               employee={selectedEmployee || undefined}
               onSubmit={handleFormSubmit}
-              onCancel={() => {
-                setShowForm(false);
-                setSelectedEmployee(null);
-              }}
+              onCancel={() => { setShowForm(false); setSelectedEmployee(null); }}
             />
           ) : (
             <>
               <div className="flex justify-between items-center mb-8">
                 <h2 className="text-3xl font-bold text-gray-800">Dashboard</h2>
                 <button
-                  onClick={() => {
-                    setSelectedEmployee(null);
-                    setShowForm(true);
-                  }}
+                  onClick={() => { setSelectedEmployee(null); setShowForm(true); }}
                   className="bg-green-600 hover:bg-green-700 text-white px-6 py-2 rounded-lg font-medium transition"
                 >
                   + Add Employee
@@ -150,7 +156,7 @@ export default function DashboardPage() {
               </div>
 
               <DashboardSummary
-                totalEmployees={employees.length}
+                totalEmployees={total}
                 activeEmployees={activeCount}
                 inactiveEmployees={inactiveCount}
               />
@@ -163,9 +169,7 @@ export default function DashboardPage() {
 
               <div className="mb-6 flex justify-between items-center">
                 <h3 className="text-xl font-bold text-gray-800">
-                  {loading
-                    ? 'Loading employees...'
-                    : `Employees (${filteredEmployees.length})`}
+                  {loading ? 'Loading...' : `Employees (${total})`}
                 </h3>
                 <button
                   onClick={handlePrint}
@@ -180,18 +184,70 @@ export default function DashboardPage() {
                   <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-green-600" />
                 </div>
               ) : (
-                <EmployeeTable
-                  employees={filteredEmployees}
-                  onEdit={handleEditClick}
-                  onDelete={handleDeleteEmployee}
-                  onPrint={handlePrint}
-                />
+                <>
+                  <EmployeeTable
+                    employees={filteredEmployees}
+                    onEdit={handleEditClick}
+                    onDelete={handleDeleteEmployee}
+                    onPrint={handlePrint}
+                  />
+
+                  {/* ── Pagination ── */}
+                  {totalPages > 1 && (
+                    <div className="flex justify-center items-center gap-2 mt-8">
+                      <button
+                        onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                        disabled={currentPage === 1}
+                        className="px-4 py-2 rounded-lg bg-white border border-gray-300 text-gray-700 hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed font-medium"
+                      >
+                        ← Prev
+                      </button>
+
+                      {/* Page number buttons */}
+                      {Array.from({ length: totalPages }, (_, i) => i + 1)
+                        .filter(p => p === 1 || p === totalPages || Math.abs(p - currentPage) <= 2)
+                        .reduce((acc: (number | string)[], p, i, arr) => {
+                          if (i > 0 && (p as number) - (arr[i - 1] as number) > 1) acc.push('...');
+                          acc.push(p);
+                          return acc;
+                        }, [])
+                        .map((p, i) =>
+                          p === '...' ? (
+                            <span key={`dots-${i}`} className="px-2 text-gray-400">...</span>
+                          ) : (
+                            <button
+                              key={p}
+                              onClick={() => setCurrentPage(p as number)}
+                              className={`px-4 py-2 rounded-lg font-medium border ${
+                                currentPage === p
+                                  ? 'bg-green-600 text-white border-green-600'
+                                  : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'
+                              }`}
+                            >
+                              {p}
+                            </button>
+                          )
+                        )}
+
+                      <button
+                        onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                        disabled={currentPage === totalPages}
+                        className="px-4 py-2 rounded-lg bg-white border border-gray-300 text-gray-700 hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed font-medium"
+                      >
+                        Next →
+                      </button>
+                    </div>
+                  )}
+
+                  <p className="text-center text-sm text-gray-500 mt-3">
+                    Page {currentPage} of {totalPages} · {total} total employees
+                  </p>
+                </>
               )}
             </>
           )}
         </main>
       </div>
-
       <style>{`
         @media print {
           body * { visibility: hidden; }

@@ -1,6 +1,7 @@
 export interface Employee {
   id: string;
   fullName: string;
+  emp_no:number;
   gender: 'Male' | 'Female' | 'Other';
   dateOfBirth: string;
   state: string;

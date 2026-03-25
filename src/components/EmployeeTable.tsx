@@ -50,7 +50,7 @@ export const EmployeeTable = ({ employees, onEdit, onDelete, onPrint }: Employee
           <tbody>
             {employees.map((employee) => (
               <tr key={employee.id} className="border-b hover:bg-gray-50 transition">
-                <td className="px-6 py-4 text-sm text-gray-800">{employee.id}</td>
+                <td className="px-6 py-4 text-sm text-gray-800"> {`EMP${String(employee.emp_no).padStart(3, '0')}`}</td>
                 <td className="px-6 py-4">
                   <img
                     src={employee.profileImage}
